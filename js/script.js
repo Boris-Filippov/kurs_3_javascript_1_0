@@ -1,70 +1,223 @@
-"use strict"
 "use strict";
 
 /**
- * @property {HTMLElement} gameContainerEl Контейнер игры (DOM элемент).
+ *  Объект каталога товаров
  */
-const chess = {
-    gameContainerEl: document.getElementById('game'),
+const catalog = {
+    catalogBlock: null,
+    cart: null,
+    list: [
+        {
+            id_product: 123,
+            product_name: 'Ноутбук',
+            price: 45600,
+        },
+        {
+            id_product: 456,
+            product_name: 'Мышка',
+            price: 1000,
+        },
+        {
+            id_product: 245,
+            product_name: 'Клавиатура',
+            price: 1500,
+        }
+    ],
 
     /**
-     * Метод отображения карты (игрового поля).
+     * Инициальзация каталога.
+     * @param catalogBlockClass - класс блока каталога
+     * @param cart - корзина
      */
-    renderMap() {
-        // Строки, которые есть на поле.
-        const rows = [0, 8, 7, 6, 5, 4, 3, 2, 1, 0];
-        // Колонки, которые есть на поле.
-        const cols = [0, 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 0];
+    init(catalogBlockClass, cart) {
+        this.catalogBlock = document.querySelector(`.${catalogBlockClass}`);
+        this.cart = cart;
+        this.render();
+        this.addEventHandlers();
+    },
 
-        // Пробегаемся по каждой строке.
-        for (let row = 0; row < rows.length; row++) {
-            // Создаем элемент строки.
-            const tr = document.createElement('tr');
-            // Добавляем строку в контейнер игры.
-            this.gameContainerEl.appendChild(tr);
-
-            // Пробегаемся по каждой колонке.
-            for (let col = 0; col < cols.length; col++) {
-                // Создаем элемент ячейки.
-                const td = document.createElement('td');
-                // Добавляем ячейку в строку.
-                tr.appendChild(td);
-
-                // Если либо строка, либо колонка равна 0, значит это не игровое поле.
-                if (rows[row] === 0 && cols[col] !== 0) {
-                    // Если это верхнее или нижнее поля, отображаем какие колонки есть, 0 не выводим.
-                    td.innerHTML = cols[col];
-                } else if (cols[col] === 0 && rows[row] !== 0) {
-                    // Если это левое или правое поля, отображаем цифры игрового поля, 0 не выводим.
-                    td.innerHTML = rows[row].toString();
-                }
-
-                // Если ячейка черная - красим ее.
-                if (this.isCellIsBlack(row, col)) {
-                    td.style.backgroundColor = 'grey';
-                }
-            }
+    /**
+     * Рендер каталога
+     */
+    render() {
+        if (this.getCatalogListLength() > 0) {
+            this.renderCatalogList();
+        } else {
+            this.renderEmptyCatalog();
         }
     },
 
     /**
-     * Определяет является ли ячейка черной.
-     * @param {int} rowNum Номер в строке.
-     * @param {int} colNum Номер в колонке.
-     * @returns {boolean} true, если ячейка должна быть черной, иначе false.
+     * Добавляем обработку событий
      */
-    isCellIsBlack(rowNum, colNum) {
-        // Если ячейка боковая (не игровое поле), их красить не нужно.
-        if (rowNum === 0 || colNum === 0 || rowNum === 9 || colNum === 9) {
-            return false;
-        }
+    addEventHandlers() {
+        this.catalogBlock.addEventListener('click', event => this.addToBasket(event));
+    },
 
-        // Определяем по четности/нечетности строки и колонки.
-        return (rowNum % 2 === 1 && colNum % 2 === 0) || (rowNum % 2 === 0 && colNum % 2 === 1);
-        // Либо можно сделать проще.
-        // return (rowNum + colNum) % 2 === 1;
+    /**
+     * Метод добавления в корзину
+     */
+    addToBasket(event) {
+        if (!event.target.classList.contains('product__add-to-cart')) return;
+        const id_product = +event.target.dataset.id_product;
+        const productToAdd = this.list.find((product) => product.id_product === id_product);
+        this.cart.addToBasket(productToAdd);
+    },
+
+    /**
+     * Метод получения количества товаров в каталоге
+     * @returns {number}
+     */
+    getCatalogListLength() {
+        return this.list.length;
+    },
+
+    /**
+     * Рендер списка товаров
+     */
+    renderCatalogList() {
+        this.catalogBlock.innerHTML = '';
+        this.list.forEach(item => {
+            this.catalogBlock.insertAdjacentHTML('beforeend', this.renderCatalogItem(item));
+        });
+    },
+
+    /**
+     * Рендер отдельного товара из списка
+     * @param item - товар
+     * @returns {string} - сгенерированая строка разметки
+     */
+    renderCatalogItem(item) {
+        return `<div class="product">
+                <h3>${item.product_name}</h3>
+                <p>${item.price} руб.</p>
+                <button class="product__add-to-cart" data-id_product="${item.id_product}">В корзину</button>
+            </div>`;
+    },
+
+    /**
+     * Рендер пустого каталога
+     */
+    renderEmptyCatalog() {
+        this.catalogBlock.innerHTML = '';
+        this.catalogBlock.textContent = 'Каталог товаров пуст.';
     },
 };
 
-// Запускаем метод отображения карты.
-chess.renderMap();
+/**
+ *  Объект корзины
+ */
+const cart = {
+    cartBlock: null,
+    clrCartButton: null,
+    goods: [
+        {
+            id_product: 123,
+            product_name: 'Ноутбук',
+            price: 45600,
+            quantity: 2,
+        },
+    ],
+
+    /**
+     * Метод инициальзации корзины
+     * @param cartBlockClass - класс блока корзины
+     * @param clrCartButton - класс кнопки очистки корзины
+     */
+    init(cartBlockClass, clrCartButton) {
+        this.cartBlock = document.querySelector(`.${cartBlockClass}`);
+        this.clrCartButton = document.querySelector(`.${clrCartButton}`);
+
+
+        this.addEventHandlers();
+        this.render();
+    },
+
+    /**
+     * Метод установки обработчиков событий
+     */
+    addEventHandlers() {
+        this.clrCartButton.addEventListener('click', this.dropCart.bind(this));
+    },
+
+    /**
+     * Метод очистки корзины
+     */
+    dropCart() {
+        this.goods = [];
+        this.render();
+    },
+
+    /**
+     * Рендер корзины
+     */
+    render() {
+        if (this.getCartGoodsLength() > 0) {
+            this.renderCartList();
+        } else {
+            this.renderEmptyCart();
+        }
+    },
+
+    /**
+     * Добавить товар
+     */
+    addToBasket(product) {
+        if (product) {
+            const findInBasket = this.goods.find((item) => product.id_product === item.id_product);
+            if (findInBasket) {
+                findInBasket.quantity++;
+            } else {
+                this.goods.push({ ...product, quantity: 1 });
+            }
+            this.render();
+        } else {
+            alert('Ошибка добавления!');
+        }
+    },
+
+    /**
+     * Получение количества товаров в корзине
+     * @returns {number}
+     */
+    getCartGoodsLength() {
+        return this.goods.length;
+    },
+
+    /**
+     * Рендер пустой корзины
+     */
+    renderEmptyCart() {
+        this.cartBlock.innerHTML = '';
+        this.cartBlock = 'Корзина пуста.';
+    },
+
+    /**
+     * Рендер списка товаров в корзине
+     */
+    renderCartList() {
+        this.cartBlock.innerHTML = '';
+        this.goods.forEach(item => {
+            this.cartBlock.insertAdjacentHTML('beforeend', this.renderCartItem(item));
+        });
+    },
+
+    /**
+     * Рендер отдельного товара в корзине
+     * @param item - товар
+     * @returns {string} - сгененрированая строка разметки
+     */
+    renderCartItem(item) {
+        return `<div>
+                <h3>${item.product_name}</h3>
+                <p>${item.price} руб.</p>
+                <p>${item.quantity} шт.</p>
+            </div>`;
+    },
+};
+
+/**
+ * Подключение каталога и корзины
+ */
+catalog.init('catalog', cart);
+cart.init('cart', 'clr-cart');
